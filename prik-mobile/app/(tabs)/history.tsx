@@ -10,10 +10,12 @@ import {
 } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import Swipeable from "react-native-gesture-handler/Swipeable";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { Colors, getGlucoseColor, getGlucoseLabel } from "../../constants/colors";
 import { EditReadingModal, type EditableReading } from "../../components/EditReadingModal";
+import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 
 // ─── Skeleton ───────────────────────────────────────────────────────────────
 
@@ -83,10 +85,10 @@ function ReadingRow({
     return (
       <Animated.View style={[styles.swipeActions, { opacity }]}>
         <TouchableOpacity style={styles.editAction} onPress={onEdit}>
-          <Text style={styles.actionText}>Edit</Text>
+          <Ionicons name="pencil" size={16} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.deleteAction} onPress={onDelete}>
-          <Text style={styles.actionText}>Delete</Text>
+          <Ionicons name="trash" size={16} color="#fff" />
         </TouchableOpacity>
       </Animated.View>
     );
@@ -123,6 +125,7 @@ export default function History() {
   );
   const deleteReading = useMutation(api.readings.deleteReading);
   const [editingReading, setEditingReading] = useState<EditableReading | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   if (!user || readings === undefined) return <HistorySkeleton />;
 
@@ -143,6 +146,12 @@ export default function History() {
       {editingReading && (
         <EditReadingModal reading={editingReading} onClose={() => setEditingReading(null)} />
       )}
+      {deletingId && (
+        <DeleteConfirmModal
+          onConfirm={() => { deleteReading({ id: deletingId as Id<"readings"> }); setDeletingId(null); }}
+          onCancel={() => setDeletingId(null)}
+        />
+      )}
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Text style={styles.heading}>History</Text>
 
@@ -162,7 +171,7 @@ export default function History() {
                   notes={r.notes}
                   mealOffset={(r as { mealOffset?: string }).mealOffset}
                   onEdit={() => setEditingReading(r as EditableReading)}
-                  onDelete={() => deleteReading({ id: r._id as Id<"readings"> })}
+                  onDelete={() => setDeletingId(r._id)}
                 />
               ))}
             </View>
@@ -226,5 +235,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignSelf: "stretch",
   },
-  actionText: { color: "#fff", fontWeight: "700", fontSize: 13 },
 });

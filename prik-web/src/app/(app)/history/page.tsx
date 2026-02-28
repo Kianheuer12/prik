@@ -6,7 +6,9 @@ import { api } from "../../../../convex/_generated/api";
 import { getGlucoseColor, getGlucoseLabel, getGlucoseBgTailwind } from "@/lib/glucose";
 import { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { EditReadingModal, type EditableReading } from "@/components/EditReadingModal";
+import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { downloadXLSX } from "@/lib/export";
+import { Pencil, Trash2 } from "lucide-react";
 
 function Skeleton({ className }: { className: string }) {
   return <div className={`animate-pulse bg-slate-200 rounded-xl ${className}`} />;
@@ -39,6 +41,7 @@ export default function History() {
   );
   const deleteReading = useMutation(api.readings.deleteReading);
   const [editingReading, setEditingReading] = useState<EditableReading | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   if (!user || readings === undefined) return <HistorySkeleton />;
 
@@ -57,6 +60,12 @@ export default function History() {
     <div className="max-w-2xl mx-auto px-4 py-6">
       {editingReading && (
         <EditReadingModal reading={editingReading} onClose={() => setEditingReading(null)} />
+      )}
+      {deletingId && (
+        <DeleteConfirmModal
+          onConfirm={() => { deleteReading({ id: deletingId as Id<"readings"> }); setDeletingId(null); }}
+          onCancel={() => setDeletingId(null)}
+        />
       )}
 
       <div className="flex items-center justify-between mb-6">
@@ -111,17 +120,17 @@ export default function History() {
                         <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-all">
                           <button
                             onClick={() => setEditingReading(r as EditableReading)}
-                            className="text-slate-300 hover:text-[#2E86AB] text-base leading-none transition-colors"
+                            className="text-slate-300 hover:text-[#2E86AB] transition-colors"
                             title="Edit"
                           >
-                            ✎
+                            <Pencil size={13} />
                           </button>
                           <button
-                            onClick={() => deleteReading({ id: r._id as Id<"readings"> })}
-                            className="text-slate-300 hover:text-red-400 text-lg leading-none transition-colors"
+                            onClick={() => setDeletingId(r._id)}
+                            className="text-slate-300 hover:text-red-400 transition-colors"
                             title="Delete"
                           >
-                            ×
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </div>
