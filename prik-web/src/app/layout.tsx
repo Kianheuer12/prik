@@ -3,6 +3,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ConvexClientProvider } from "./convex-provider";
 import "./globals.css";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Prik",
   description: "Track your glucose, your way.",
