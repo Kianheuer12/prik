@@ -1,11 +1,13 @@
 "use client";
 import { useUser } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
-import { useMemo } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "../../../../convex/_generated/api";
+import { Id } from "../../../../convex/_generated/dataModel";
 import { getGlucoseColor, getGlucoseLabel, getGlucoseTailwind, getGlucoseBgTailwind } from "@/lib/glucose";
 import { GlucoseChart } from "@/components/GlucoseChart";
+import { EditReadingModal, type EditableReading } from "@/components/EditReadingModal";
 import { downloadXLSX } from "@/lib/export";
 
 function Skeleton({ className }: { className: string }) {
@@ -38,6 +40,8 @@ export default function Dashboard() {
     api.readings.getLast7DaysReadings,
     user ? { userId: user.id, since: sevenDaysAgo } : "skip"
   );
+  const deleteReading = useMutation(api.readings.deleteReading);
+  const [editingReading, setEditingReading] = useState<EditableReading | null>(null);
 
   if (!user || readings === undefined) return <DashboardSkeleton />;
 
@@ -49,6 +53,10 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
+      {editingReading && (
+        <EditReadingModal reading={editingReading} onClose={() => setEditingReading(null)} />
+      )}
+
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-2xl font-bold text-slate-900">
           Hi {user.firstName ?? "there"} 👋
@@ -117,23 +125,45 @@ export default function Dashboard() {
             const date = new Date(r.timestamp);
             const timeStr = date.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" });
             const dateStr = date.toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
+            const mealOffset = (r as { mealOffset?: string }).mealOffset;
             return (
-              <div key={r._id} className="bg-white rounded-xl border border-slate-200 flex items-center overflow-hidden">
+              <div key={r._id} className="bg-white rounded-xl border border-slate-200 flex items-center overflow-hidden group">
                 <div className={`w-1.5 self-stretch ${getGlucoseBgTailwind(r.value)}`} />
                 <div className="flex-1 px-4 py-3">
                   <p className="text-sm font-medium text-slate-800">
                     {r.type === "fasted" ? "Fasted" : "Post-meal"}
                   </p>
-                  <p className="text-xs text-slate-400">{dateStr} · {timeStr}</p>
+                  <p className="text-xs text-slate-400">
+                    {dateStr} · {timeStr}
+                    {r.type === "post-meal" && mealOffset && <> · {mealOffset} after meal</>}
+                  </p>
                   {r.notes && <p className="text-xs text-slate-400 mt-0.5">{r.notes}</p>}
                 </div>
-                <div className="px-4 text-right">
-                  <p className={`text-xl font-bold ${getGlucoseTailwind(r.value)}`}>
-                    {r.value.toFixed(1)}
-                  </p>
-                  <p className={`text-xs ${getGlucoseTailwind(r.value)}`}>
-                    {getGlucoseLabel(r.value)}
-                  </p>
+                <div className="px-4 text-right flex items-center gap-3">
+                  <div>
+                    <p className={`text-xl font-bold ${getGlucoseTailwind(r.value)}`}>
+                      {r.value.toFixed(1)}
+                    </p>
+                    <p className={`text-xs ${getGlucoseTailwind(r.value)}`}>
+                      {getGlucoseLabel(r.value)}
+                    </p>
+                  </div>
+                  <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-all">
+                    <button
+                      onClick={() => setEditingReading(r as EditableReading)}
+                      className="text-slate-300 hover:text-[#2E86AB] text-base leading-none transition-colors"
+                      title="Edit"
+                    >
+                      ✎
+                    </button>
+                    <button
+                      onClick={() => deleteReading({ id: r._id as Id<"readings"> })}
+                      className="text-slate-300 hover:text-red-400 text-lg leading-none transition-colors"
+                      title="Delete"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               </div>
             );

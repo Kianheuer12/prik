@@ -1,5 +1,5 @@
 import { useUser } from "@clerk/clerk-expo";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import {
   View,
   Text,
@@ -9,10 +9,13 @@ import {
   Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
+import Swipeable from "react-native-gesture-handler/Swipeable";
 import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 import { Colors, getGlucoseColor, getGlucoseLabel } from "../../constants/colors";
 import { GlucoseChart } from "../../components/GlucoseChart";
+import { EditReadingModal, type EditableReading } from "../../components/EditReadingModal";
 
 // ─── Skeleton ───────────────────────────────────────────────────────────────
 
@@ -55,11 +58,22 @@ function DashboardSkeleton() {
 
 // ─── Reading row ─────────────────────────────────────────────────────────────
 
-function ReadingRow({ value, type, timestamp, notes }: {
+function ReadingRow({
+  value,
+  type,
+  timestamp,
+  notes,
+  mealOffset,
+  onEdit,
+  onDelete,
+}: {
   value: number;
   type: string;
   timestamp: number;
   notes?: string;
+  mealOffset?: string;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const color = getGlucoseColor(value);
   const label = getGlucoseLabel(value);
@@ -67,19 +81,38 @@ function ReadingRow({ value, type, timestamp, notes }: {
   const timeStr = date.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" });
   const dateStr = date.toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
 
+  function renderRightActions(progress: Animated.AnimatedInterpolation<number>) {
+    const opacity = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+    return (
+      <Animated.View style={[styles.swipeActions, { opacity }]}>
+        <TouchableOpacity style={styles.editAction} onPress={onEdit}>
+          <Text style={styles.actionText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.deleteAction} onPress={onDelete}>
+          <Text style={styles.actionText}>Delete</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }
+
   return (
-    <View style={styles.readingRow}>
-      <View style={[styles.readingBar, { backgroundColor: color }]} />
-      <View style={styles.readingInfo}>
-        <Text style={styles.readingType}>{type === "fasted" ? "Fasted" : "Post-meal"}</Text>
-        <Text style={styles.readingDate}>{dateStr} · {timeStr}</Text>
-        {notes ? <Text style={styles.readingNotes}>{notes}</Text> : null}
+    <Swipeable renderRightActions={renderRightActions} friction={2} rightThreshold={40}>
+      <View style={styles.readingRow}>
+        <View style={[styles.readingBar, { backgroundColor: color }]} />
+        <View style={styles.readingInfo}>
+          <Text style={styles.readingType}>{type === "fasted" ? "Fasted" : "Post-meal"}</Text>
+          <Text style={styles.readingDate}>
+            {dateStr} · {timeStr}
+            {type === "post-meal" && mealOffset ? ` · ${mealOffset} after meal` : ""}
+          </Text>
+          {notes ? <Text style={styles.readingNotes}>{notes}</Text> : null}
+        </View>
+        <View style={styles.readingRight}>
+          <Text style={[styles.readingValue, { color }]}>{value.toFixed(1)}</Text>
+          <Text style={[styles.readingStatus, { color }]}>{label}</Text>
+        </View>
       </View>
-      <View style={styles.readingRight}>
-        <Text style={[styles.readingValue, { color }]}>{value.toFixed(1)}</Text>
-        <Text style={[styles.readingStatus, { color }]}>{label}</Text>
-      </View>
-    </View>
+    </Swipeable>
   );
 }
 
@@ -94,6 +127,8 @@ export default function Dashboard() {
     api.readings.getLast7DaysReadings,
     user ? { userId: user.id, since: sevenDaysAgo } : "skip"
   );
+  const deleteReading = useMutation(api.readings.deleteReading);
+  const [editingReading, setEditingReading] = useState<EditableReading | null>(null);
 
   if (!user || readings === undefined) return <DashboardSkeleton />;
 
@@ -104,69 +139,77 @@ export default function Dashboard() {
   const low = values.length ? Math.min(...values) : null;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.greeting}>Hi {user.firstName ?? "there"} 👋</Text>
-      <Text style={styles.subtitle}>
-        Last 7 days · {values.length} reading{values.length !== 1 ? "s" : ""}
-      </Text>
+    <>
+      {editingReading && (
+        <EditReadingModal reading={editingReading} onClose={() => setEditingReading(null)} />
+      )}
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Text style={styles.greeting}>Hi {user.firstName ?? "there"} 👋</Text>
+        <Text style={styles.subtitle}>
+          Last 7 days · {values.length} reading{values.length !== 1 ? "s" : ""}
+        </Text>
 
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        {[
-          { label: "Average", value: avg },
-          { label: "High", value: high },
-          { label: "Low", value: low },
-        ].map(({ label, value }) => (
-          <View key={label} style={styles.statCard}>
-            <Text style={styles.statLabel}>{label}</Text>
-            <Text
-              style={[
-                styles.statValue,
-                { color: value !== null ? getGlucoseColor(value) : Colors.textMuted },
-              ]}
-            >
-              {value !== null ? value.toFixed(1) : "—"}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Log button */}
-      <TouchableOpacity style={styles.logButton} onPress={() => router.push("/(tabs)/log")}>
-        <Text style={styles.logButtonText}>+ Log Reading</Text>
-      </TouchableOpacity>
-
-      {/* Chart */}
-      {readings.length > 1 && (
-        <View style={styles.chartCard}>
-          <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>7-day trend</Text>
-            <View style={styles.chartLegend}>
-              <View style={styles.legendDot} />
-              <Text style={styles.legendText}>Target 4.0–7.8</Text>
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          {[
+            { label: "Average", value: avg },
+            { label: "High", value: high },
+            { label: "Low", value: low },
+          ].map(({ label, value }) => (
+            <View key={label} style={styles.statCard}>
+              <Text style={styles.statLabel}>{label}</Text>
+              <Text
+                style={[
+                  styles.statValue,
+                  { color: value !== null ? getGlucoseColor(value) : Colors.textMuted },
+                ]}
+              >
+                {value !== null ? value.toFixed(1) : "—"}
+              </Text>
             </View>
-          </View>
-          <GlucoseChart readings={readings} />
+          ))}
         </View>
-      )}
 
-      {/* Readings list */}
-      <Text style={styles.sectionTitle}>Recent Readings</Text>
+        {/* Log button */}
+        <TouchableOpacity style={styles.logButton} onPress={() => router.push("/(tabs)/log")}>
+          <Text style={styles.logButtonText}>+ Log Reading</Text>
+        </TouchableOpacity>
 
-      {sorted.length === 0 ? (
-        <Text style={styles.emptyText}>No readings in the last 7 days.</Text>
-      ) : (
-        sorted.map((r) => (
-          <ReadingRow
-            key={r._id}
-            value={r.value}
-            type={r.type}
-            timestamp={r.timestamp}
-            notes={r.notes}
-          />
-        ))
-      )}
-    </ScrollView>
+        {/* Chart */}
+        {readings.length > 1 && (
+          <View style={styles.chartCard}>
+            <View style={styles.chartHeader}>
+              <Text style={styles.chartTitle}>7-day trend</Text>
+              <View style={styles.chartLegend}>
+                <View style={styles.legendDot} />
+                <Text style={styles.legendText}>Target 4.0–7.8</Text>
+              </View>
+            </View>
+            <GlucoseChart readings={readings} />
+          </View>
+        )}
+
+        {/* Readings list */}
+        <Text style={styles.sectionTitle}>Recent Readings</Text>
+
+        {sorted.length === 0 ? (
+          <Text style={styles.emptyText}>No readings in the last 7 days.</Text>
+        ) : (
+          sorted.map((r) => (
+            <ReadingRow
+              key={r._id}
+              value={r.value}
+              type={r.type}
+              timestamp={r.timestamp}
+              notes={r.notes}
+              mealOffset={(r as { mealOffset?: string }).mealOffset}
+              onEdit={() => setEditingReading(r as EditableReading)}
+              onDelete={() => deleteReading({ id: r._id as Id<"readings"> })}
+            />
+          ))
+        )}
+      </ScrollView>
+    </>
   );
 }
 
@@ -174,18 +217,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: 20, paddingBottom: 40 },
 
-  // Skeleton
-  skeletonBox: {
-    backgroundColor: "#e2e8f0",
-    borderRadius: 12,
-    marginBottom: 8,
-  },
+  skeletonBox: { backgroundColor: "#e2e8f0", borderRadius: 12, marginBottom: 8 },
 
-  // Header
   greeting: { fontSize: 24, fontWeight: "700", color: Colors.text },
   subtitle: { fontSize: 14, color: Colors.textSecondary, marginBottom: 20 },
 
-  // Stats
   statsRow: { flexDirection: "row", gap: 10, marginBottom: 20 },
   statCard: {
     flex: 1,
@@ -199,7 +235,6 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 11, color: Colors.textMuted, marginBottom: 4 },
   statValue: { fontSize: 22, fontWeight: "700" },
 
-  // Log button
   logButton: {
     backgroundColor: Colors.primary,
     borderRadius: 14,
@@ -209,7 +244,6 @@ const styles = StyleSheet.create({
   },
   logButtonText: { color: "#fff", fontSize: 17, fontWeight: "700" },
 
-  // Chart
   chartCard: {
     backgroundColor: Colors.surface,
     borderRadius: 16,
@@ -237,7 +271,6 @@ const styles = StyleSheet.create({
   },
   legendText: { fontSize: 11, color: Colors.textMuted },
 
-  // Readings list
   sectionTitle: { fontSize: 17, fontWeight: "600", color: Colors.text, marginBottom: 12 },
   readingRow: {
     flexDirection: "row",
@@ -257,6 +290,23 @@ const styles = StyleSheet.create({
   readingRight: { paddingHorizontal: 14, alignItems: "flex-end" },
   readingValue: { fontSize: 20, fontWeight: "700" },
   readingStatus: { fontSize: 11 },
+
+  swipeActions: { flexDirection: "row", marginBottom: 8, gap: 6, alignItems: "center" },
+  editAction: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+    alignSelf: "stretch",
+  },
+  deleteAction: {
+    backgroundColor: "#EF4444",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+    alignSelf: "stretch",
+  },
+  actionText: { color: "#fff", fontWeight: "700", fontSize: 13 },
 
   emptyText: { color: Colors.textMuted, textAlign: "center", marginTop: 20 },
 });

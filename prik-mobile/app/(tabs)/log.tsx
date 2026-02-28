@@ -18,6 +18,8 @@ import { Colors, getGlucoseColor, getGlucoseLabel } from "../../constants/colors
 
 type ReadingType = "fasted" | "post-meal";
 
+const MEAL_OFFSETS = ["30 min", "1 hr", "1.5 hrs", "2 hrs", "3 hrs"];
+
 export default function LogReading() {
   const { user } = useUser();
   const addReading = useMutation(api.readings.addReading);
@@ -25,6 +27,7 @@ export default function LogReading() {
 
   const [value, setValue] = useState("");
   const [type, setType] = useState<ReadingType>("fasted");
+  const [mealOffset, setMealOffset] = useState<string | undefined>(undefined);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -40,11 +43,12 @@ export default function LogReading() {
         value: numericValue,
         timestamp: Date.now(),
         type,
+        mealOffset: type === "post-meal" ? mealOffset : undefined,
         notes: notes.trim() || undefined,
       });
       router.replace("/(tabs)/dashboard");
-    } catch (err: any) {
-      Alert.alert("Error", err.message ?? "Failed to save reading");
+    } catch (err: unknown) {
+      Alert.alert("Error", err instanceof Error ? err.message : "Failed to save reading");
     } finally {
       setLoading(false);
     }
@@ -95,6 +99,31 @@ export default function LogReading() {
           ))}
         </View>
 
+        {/* Meal offset — only for post-meal */}
+        {type === "post-meal" && (
+          <>
+            <Text style={[styles.label, { marginTop: 24 }]}>Time after meal</Text>
+            <View style={styles.offsetRow}>
+              {MEAL_OFFSETS.map((o) => (
+                <TouchableOpacity
+                  key={o}
+                  style={[styles.offsetChip, mealOffset === o && styles.offsetChipActive]}
+                  onPress={() => setMealOffset(mealOffset === o ? undefined : o)}
+                >
+                  <Text
+                    style={[
+                      styles.offsetChipText,
+                      mealOffset === o && styles.offsetChipTextActive,
+                    ]}
+                  >
+                    {o}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+
         <Text style={[styles.label, { marginTop: 24 }]}>Notes (optional)</Text>
         <TextInput
           style={styles.notesInput}
@@ -124,7 +153,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: 20, paddingBottom: 40 },
   label: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     color: Colors.textSecondary,
     marginBottom: 8,
@@ -165,6 +194,18 @@ const styles = StyleSheet.create({
   },
   typeButtonText: { fontSize: 15, color: Colors.textSecondary, fontWeight: "500" },
   typeButtonTextActive: { color: Colors.primary, fontWeight: "700" },
+  offsetRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  offsetChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  offsetChipActive: { backgroundColor: Colors.primaryLight, borderColor: Colors.primary },
+  offsetChipText: { fontSize: 14, color: Colors.textSecondary, fontWeight: "500" },
+  offsetChipTextActive: { color: Colors.primary, fontWeight: "600" },
   notesInput: {
     backgroundColor: Colors.surface,
     borderWidth: 1,

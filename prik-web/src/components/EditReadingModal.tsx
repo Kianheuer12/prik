@@ -1,59 +1,73 @@
 "use client";
-import { useUser } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { api } from "../../../../convex/_generated/api";
+import { useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 import { getGlucoseColor, getGlucoseLabel } from "@/lib/glucose";
 
 type ReadingType = "fasted" | "post-meal";
 
+export type EditableReading = {
+  _id: string;
+  value: number;
+  type: string;
+  mealOffset?: string;
+  notes?: string;
+};
+
 const MEAL_OFFSETS = ["30 min", "1 hr", "1.5 hrs", "2 hrs", "3 hrs"];
 
-export default function LogReading() {
-  const { user } = useUser();
-  const addReading = useMutation(api.readings.addReading);
-  const router = useRouter();
-
-  const [value, setValue] = useState("");
-  const [type, setType] = useState<ReadingType>("fasted");
-  const [mealOffset, setMealOffset] = useState<string | undefined>(undefined);
-  const [notes, setNotes] = useState("");
+export function EditReadingModal({
+  reading,
+  onClose,
+}: {
+  reading: EditableReading;
+  onClose: () => void;
+}) {
+  const updateReading = useMutation(api.readings.updateReading);
+  const [value, setValue] = useState(reading.value.toFixed(1));
+  const [type, setType] = useState<ReadingType>(reading.type as ReadingType);
+  const [mealOffset, setMealOffset] = useState<string | undefined>(reading.mealOffset);
+  const [notes, setNotes] = useState(reading.notes ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const numericValue = parseFloat(value);
   const isValid = !isNaN(numericValue) && numericValue > 0 && numericValue < 50;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user || !isValid) return;
+  async function handleSave() {
+    if (!isValid) return;
     setLoading(true);
     setError("");
     try {
-      await addReading({
-        userId: user.id,
+      await updateReading({
+        id: reading._id as Id<"readings">,
         value: numericValue,
-        timestamp: Date.now(),
         type,
         mealOffset: type === "post-meal" ? mealOffset : undefined,
         notes: notes.trim() || undefined,
       });
-      router.push("/dashboard");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save reading");
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold text-slate-900 mb-6">Log Reading</h1>
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-lg font-bold text-slate-900 mb-5">Edit Reading</h2>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Value input */}
-        <div>
+        {/* Value */}
+        <div className="mb-4">
           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
             Glucose (mmol/L)
           </label>
@@ -62,10 +76,9 @@ export default function LogReading() {
             step="0.1"
             min="0"
             max="50"
-            placeholder="e.g. 5.4"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            className="w-full text-4xl font-bold text-center py-5 rounded-2xl border-2 bg-white outline-none transition-colors"
+            className="w-full text-3xl font-bold text-center py-4 rounded-xl border-2 bg-white outline-none transition-colors"
             style={{
               borderColor: isValid ? getGlucoseColor(numericValue) : "#e2e8f0",
               color: isValid ? getGlucoseColor(numericValue) : "#1a202c",
@@ -73,26 +86,26 @@ export default function LogReading() {
           />
           {isValid && (
             <p
-              className="text-center mt-2 font-semibold text-sm"
+              className="text-center mt-1 text-sm font-semibold"
               style={{ color: getGlucoseColor(numericValue) }}
             >
-              {getGlucoseLabel(numericValue)} · {numericValue.toFixed(1)} mmol/L
+              {getGlucoseLabel(numericValue)}
             </p>
           )}
         </div>
 
         {/* Type */}
-        <div>
+        <div className="mb-4">
           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-            Reading type
+            Type
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             {(["fasted", "post-meal"] as ReadingType[]).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setType(t)}
-                className={`py-3 rounded-xl border font-medium transition-colors ${
+                className={`py-2.5 rounded-xl border font-medium text-sm transition-colors ${
                   type === t
                     ? "bg-[#E6F4FE] border-[#2E86AB] text-[#2E86AB]"
                     : "bg-white border-slate-200 text-slate-600"
@@ -104,9 +117,9 @@ export default function LogReading() {
           </div>
         </div>
 
-        {/* Meal offset — only for post-meal */}
+        {/* Meal offset */}
         {type === "post-meal" && (
-          <div>
+          <div className="mb-4">
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
               Time after meal
             </label>
@@ -116,7 +129,7 @@ export default function LogReading() {
                   key={o}
                   type="button"
                   onClick={() => setMealOffset(mealOffset === o ? undefined : o)}
-                  className={`px-4 py-2 rounded-xl border text-sm font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
                     mealOffset === o
                       ? "bg-[#E6F4FE] border-[#2E86AB] text-[#2E86AB]"
                       : "bg-white border-slate-200 text-slate-600"
@@ -130,30 +143,36 @@ export default function LogReading() {
         )}
 
         {/* Notes */}
-        <div>
+        <div className="mb-5">
           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
             Notes (optional)
           </label>
           <textarea
-            placeholder="e.g. after lunch, felt dizzy..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            rows={3}
+            rows={2}
             className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 outline-none resize-none focus:border-[#2E86AB] transition-colors"
           />
         </div>
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={!isValid || loading}
-          className="w-full py-4 rounded-2xl text-white font-bold text-lg transition-colors disabled:opacity-40"
-          style={{ backgroundColor: isValid ? "#2E86AB" : "#94a3b8" }}
-        >
-          {loading ? "Saving..." : "Save Reading"}
-        </button>
-      </form>
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!isValid || loading}
+            className="flex-1 py-3 rounded-xl bg-[#2E86AB] text-white font-bold hover:bg-[#2577a0] transition-colors disabled:opacity-40"
+          >
+            {loading ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

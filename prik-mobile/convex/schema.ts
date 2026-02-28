@@ -14,6 +14,7 @@ export default defineSchema({
     value: v.number(), // mmol/L
     timestamp: v.number(), // Unix ms
     type: v.union(v.literal("fasted"), v.literal("post-meal")),
+    mealOffset: v.optional(v.string()), // e.g. "30 min", "1 hr", "2 hrs"
     notes: v.optional(v.string()),
   })
     .index("by_user", ["userId"])

@@ -7,6 +7,7 @@ export const addReading = mutation({
     value: v.number(),
     timestamp: v.number(),
     type: v.union(v.literal("fasted"), v.literal("post-meal")),
+    mealOffset: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -55,5 +56,19 @@ export const deleteReading = mutation({
   args: { id: v.id("readings") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
+  },
+});
+
+export const updateReading = mutation({
+  args: {
+    id: v.id("readings"),
+    value: v.number(),
+    type: v.union(v.literal("fasted"), v.literal("post-meal")),
+    mealOffset: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...fields } = args;
+    await ctx.db.patch(id, fields);
   },
 });

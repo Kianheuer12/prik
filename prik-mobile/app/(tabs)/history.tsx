@@ -8,11 +8,12 @@ import {
   TouchableOpacity,
   Animated,
 } from "react-native";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { Colors, getGlucoseColor, getGlucoseLabel } from "../../constants/colors";
+import { EditReadingModal, type EditableReading } from "../../components/EditReadingModal";
 
 // ─── Skeleton ───────────────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ function HistorySkeleton() {
   );
 }
 
-// ─── Reading row with swipe-to-delete ────────────────────────────────────────
+// ─── Reading row with swipe ───────────────────────────────────────────────────
 
 function ReadingRow({
   id,
@@ -57,6 +58,8 @@ function ReadingRow({
   type,
   timestamp,
   notes,
+  mealOffset,
+  onEdit,
   onDelete,
 }: {
   id: string;
@@ -64,6 +67,8 @@ function ReadingRow({
   type: string;
   timestamp: number;
   notes?: string;
+  mealOffset?: string;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const color = getGlucoseColor(value);
@@ -74,14 +79,14 @@ function ReadingRow({
   });
 
   function renderRightActions(progress: Animated.AnimatedInterpolation<number>) {
-    const opacity = progress.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, 1],
-    });
+    const opacity = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
     return (
-      <Animated.View style={[styles.deleteAction, { opacity }]}>
-        <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
-          <Text style={styles.deleteText}>Delete</Text>
+      <Animated.View style={[styles.swipeActions, { opacity }]}>
+        <TouchableOpacity style={styles.editAction} onPress={onEdit}>
+          <Text style={styles.actionText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.deleteAction} onPress={onDelete}>
+          <Text style={styles.actionText}>Delete</Text>
         </TouchableOpacity>
       </Animated.View>
     );
@@ -93,7 +98,10 @@ function ReadingRow({
         <View style={[styles.colorBar, { backgroundColor: color }]} />
         <View style={styles.rowInfo}>
           <Text style={styles.rowType}>{type === "fasted" ? "Fasted" : "Post-meal"}</Text>
-          <Text style={styles.rowTime}>{time}</Text>
+          <Text style={styles.rowTime}>
+            {time}
+            {type === "post-meal" && mealOffset ? ` · ${mealOffset} after meal` : ""}
+          </Text>
           {notes ? <Text style={styles.rowNotes}>{notes}</Text> : null}
         </View>
         <View style={styles.rowRight}>
@@ -114,6 +122,7 @@ export default function History() {
     user ? { userId: user.id } : "skip"
   );
   const deleteReading = useMutation(api.readings.deleteReading);
+  const [editingReading, setEditingReading] = useState<EditableReading | null>(null);
 
   if (!user || readings === undefined) return <HistorySkeleton />;
 
@@ -130,30 +139,37 @@ export default function History() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>History</Text>
-
-      {readings.length === 0 ? (
-        <Text style={styles.empty}>No readings logged yet.</Text>
-      ) : (
-        Object.entries(grouped).map(([day, dayReadings]) => (
-          <View key={day} style={styles.dayGroup}>
-            <Text style={styles.dayLabel}>{day}</Text>
-            {dayReadings.map((r) => (
-              <ReadingRow
-                key={r._id}
-                id={r._id}
-                value={r.value}
-                type={r.type}
-                timestamp={r.timestamp}
-                notes={r.notes}
-                onDelete={() => deleteReading({ id: r._id as Id<"readings"> })}
-              />
-            ))}
-          </View>
-        ))
+    <>
+      {editingReading && (
+        <EditReadingModal reading={editingReading} onClose={() => setEditingReading(null)} />
       )}
-    </ScrollView>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Text style={styles.heading}>History</Text>
+
+        {readings.length === 0 ? (
+          <Text style={styles.empty}>No readings logged yet.</Text>
+        ) : (
+          Object.entries(grouped).map(([day, dayReadings]) => (
+            <View key={day} style={styles.dayGroup}>
+              <Text style={styles.dayLabel}>{day}</Text>
+              {dayReadings.map((r) => (
+                <ReadingRow
+                  key={r._id}
+                  id={r._id}
+                  value={r.value}
+                  type={r.type}
+                  timestamp={r.timestamp}
+                  notes={r.notes}
+                  mealOffset={(r as { mealOffset?: string }).mealOffset}
+                  onEdit={() => setEditingReading(r as EditableReading)}
+                  onDelete={() => deleteReading({ id: r._id as Id<"readings"> })}
+                />
+              ))}
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </>
   );
 }
 
@@ -161,11 +177,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: 20, paddingBottom: 40 },
 
-  skeletonBox: {
-    backgroundColor: "#e2e8f0",
-    borderRadius: 12,
-    marginBottom: 6,
-  },
+  skeletonBox: { backgroundColor: "#e2e8f0", borderRadius: 12, marginBottom: 6 },
 
   heading: { fontSize: 24, fontWeight: "700", color: Colors.text, marginBottom: 20 },
   empty: { color: Colors.textMuted, textAlign: "center", marginTop: 40 },
@@ -199,18 +211,20 @@ const styles = StyleSheet.create({
   rowValue: { fontSize: 20, fontWeight: "700" },
   rowStatus: { fontSize: 11 },
 
-  deleteAction: {
+  swipeActions: { flexDirection: "row", marginBottom: 6, gap: 6, alignItems: "center" },
+  editAction: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 16,
     justifyContent: "center",
-    marginBottom: 6,
-    marginLeft: 8,
+    alignSelf: "stretch",
   },
-  deleteButton: {
+  deleteAction: {
     backgroundColor: "#EF4444",
     borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    height: "100%",
+    paddingHorizontal: 16,
     justifyContent: "center",
+    alignSelf: "stretch",
   },
-  deleteText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  actionText: { color: "#fff", fontWeight: "700", fontSize: 13 },
 });
