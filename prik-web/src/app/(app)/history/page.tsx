@@ -4,6 +4,30 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { getGlucoseColor, getGlucoseLabel, getGlucoseBgTailwind } from "@/lib/glucose";
 import { Doc, Id } from "../../../../convex/_generated/dataModel";
+import { downloadXLSX } from "@/lib/export";
+
+function Skeleton({ className }: { className: string }) {
+  return <div className={`animate-pulse bg-slate-200 rounded-xl ${className}`} />;
+}
+
+function HistorySkeleton() {
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="flex items-center justify-between mb-6">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="mb-6">
+          <Skeleton className="h-4 w-48 mb-2" />
+          <div className="space-y-2">
+            {[0, 1, 2].map((j) => <Skeleton key={j} className="h-16" />)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function History() {
   const { user } = useUser();
@@ -13,16 +37,8 @@ export default function History() {
   );
   const deleteReading = useMutation(api.readings.deleteReading);
 
-  if (readings === undefined) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-slate-900 mb-6">History</h1>
-        <p className="text-slate-400 text-center py-12">Loading...</p>
-      </div>
-    );
-  }
+  if (!user || readings === undefined) return <HistorySkeleton />;
 
-  // Group by day
   const grouped: Record<string, Doc<"readings">[]> = {};
   for (const r of readings) {
     const day = new Date(r.timestamp).toLocaleDateString("en-ZA", {
@@ -36,7 +52,17 @@ export default function History() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold text-slate-900 mb-6">History</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">History</h1>
+        {readings.length > 0 && (
+          <button
+            onClick={() => downloadXLSX(readings, `prik-all-readings-${new Date().toISOString().slice(0, 10)}`)}
+            className="text-sm text-white bg-[#2E86AB] hover:bg-[#2577a0] px-4 py-2 rounded-xl font-medium transition-colors"
+          >
+            Export XLSX
+          </button>
+        )}
+      </div>
 
       {days.length === 0 ? (
         <p className="text-slate-400 text-center py-12">No readings yet.</p>

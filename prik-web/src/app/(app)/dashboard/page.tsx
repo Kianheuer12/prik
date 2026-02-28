@@ -5,6 +5,30 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { api } from "../../../../convex/_generated/api";
 import { getGlucoseColor, getGlucoseLabel, getGlucoseTailwind, getGlucoseBgTailwind } from "@/lib/glucose";
+import { GlucoseChart } from "@/components/GlucoseChart";
+import { downloadXLSX } from "@/lib/export";
+
+function Skeleton({ className }: { className: string }) {
+  return <div className={`animate-pulse bg-slate-200 rounded-xl ${className}`} />;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-6">
+      <Skeleton className="h-8 w-48 mb-1" />
+      <Skeleton className="h-4 w-32 mb-5" />
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24" />)}
+      </div>
+      <Skeleton className="h-14 w-full mb-6" />
+      <Skeleton className="h-52 w-full mb-6" />
+      <Skeleton className="h-6 w-36 mb-3" />
+      <div className="space-y-2">
+        {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16" />)}
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -15,7 +39,9 @@ export default function Dashboard() {
     user ? { userId: user.id, since: sevenDaysAgo } : "skip"
   );
 
-  const sorted = readings ? [...readings].sort((a, b) => b.timestamp - a.timestamp) : [];
+  if (!user || readings === undefined) return <DashboardSkeleton />;
+
+  const sorted = [...readings].sort((a, b) => b.timestamp - a.timestamp);
   const values = sorted.map((r) => r.value);
   const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
   const high = values.length ? Math.max(...values) : null;
@@ -25,7 +51,7 @@ export default function Dashboard() {
     <div className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-2xl font-bold text-slate-900">
-          Hi {user?.firstName ?? "there"} 👋
+          Hi {user.firstName ?? "there"} 👋
         </h1>
       </div>
       <p className="text-sm text-slate-500 mb-5">
@@ -41,10 +67,7 @@ export default function Dashboard() {
         ].map(({ label, value }) => (
           <div key={label} className="bg-white rounded-2xl p-4 border border-slate-200 text-center">
             <p className="text-xs text-slate-400 mb-1">{label}</p>
-            <p
-              className="text-2xl font-bold"
-              style={{ color: value !== null ? getGlucoseColor(value) : "#94a3b8" }}
-            >
+            <p className="text-2xl font-bold" style={{ color: value !== null ? getGlucoseColor(value) : "#94a3b8" }}>
               {value !== null ? value.toFixed(1) : "—"}
             </p>
           </div>
@@ -59,12 +82,34 @@ export default function Dashboard() {
         + Log Reading
       </Link>
 
-      {/* Readings list */}
-      <h2 className="text-lg font-semibold text-slate-900 mb-3">Recent Readings</h2>
+      {/* Chart */}
+      {readings.length > 1 && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-slate-700">7-day trend</h2>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span className="inline-block w-3 h-3 rounded-sm bg-green-100 border border-green-300" />
+              Target 4.0–7.8
+            </div>
+          </div>
+          <GlucoseChart readings={readings} />
+        </div>
+      )}
 
-      {readings === undefined ? (
-        <p className="text-slate-400 text-center py-8">Loading...</p>
-      ) : sorted.length === 0 ? (
+      {/* Readings list */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-semibold text-slate-900">Recent Readings</h2>
+        {readings.length > 0 && (
+          <button
+            onClick={() => downloadXLSX(readings, `prik-7days-${new Date().toISOString().slice(0, 10)}`)}
+            className="text-xs text-[#2E86AB] hover:underline font-medium"
+          >
+            Export XLSX
+          </button>
+        )}
+      </div>
+
+      {sorted.length === 0 ? (
         <p className="text-slate-400 text-center py-8">No readings in the last 7 days.</p>
       ) : (
         <div className="space-y-2">
