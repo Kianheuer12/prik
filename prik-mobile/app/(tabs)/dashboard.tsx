@@ -6,20 +6,54 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { api } from "../../convex/_generated/api";
 import { Colors, getGlucoseColor, getGlucoseLabel } from "../../constants/colors";
+import { GlucoseChart } from "../../components/GlucoseChart";
 
-function StatCard({ label, value, color }: { label: string; value: string; color?: string }) {
+// ─── Skeleton ───────────────────────────────────────────────────────────────
+
+function SkeletonBox({ style }: { style?: object }) {
+  const opacity = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 600, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  return <Animated.View style={[styles.skeletonBox, style, { opacity }]} />;
+}
+
+function DashboardSkeleton() {
   return (
-    <View style={styles.statCard}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={[styles.statValue, color ? { color } : {}]}>{value}</Text>
-    </View>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <SkeletonBox style={{ height: 30, width: 160, marginBottom: 6 }} />
+      <SkeletonBox style={{ height: 16, width: 120, marginBottom: 20 }} />
+      <View style={styles.statsRow}>
+        {[0, 1, 2].map((i) => (
+          <SkeletonBox key={i} style={{ flex: 1, height: 72 }} />
+        ))}
+      </View>
+      <SkeletonBox style={{ height: 56, width: "100%", marginBottom: 24 }} />
+      <SkeletonBox style={{ height: 200, width: "100%", marginBottom: 24 }} />
+      <SkeletonBox style={{ height: 20, width: 140, marginBottom: 12 }} />
+      {[0, 1, 2, 3].map((i) => (
+        <SkeletonBox key={i} style={{ height: 64, width: "100%", marginBottom: 8 }} />
+      ))}
+    </ScrollView>
   );
 }
+
+// ─── Reading row ─────────────────────────────────────────────────────────────
 
 function ReadingRow({ value, type, timestamp, notes }: {
   value: number;
@@ -35,13 +69,13 @@ function ReadingRow({ value, type, timestamp, notes }: {
 
   return (
     <View style={styles.readingRow}>
-      <View style={[styles.readingDot, { backgroundColor: color }]} />
+      <View style={[styles.readingBar, { backgroundColor: color }]} />
       <View style={styles.readingInfo}>
         <Text style={styles.readingType}>{type === "fasted" ? "Fasted" : "Post-meal"}</Text>
         <Text style={styles.readingDate}>{dateStr} · {timeStr}</Text>
         {notes ? <Text style={styles.readingNotes}>{notes}</Text> : null}
       </View>
-      <View>
+      <View style={styles.readingRight}>
         <Text style={[styles.readingValue, { color }]}>{value.toFixed(1)}</Text>
         <Text style={[styles.readingStatus, { color }]}>{label}</Text>
       </View>
@@ -49,10 +83,11 @@ function ReadingRow({ value, type, timestamp, notes }: {
   );
 }
 
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+
 export default function Dashboard() {
   const { user } = useUser();
   const router = useRouter();
-
   const sevenDaysAgo = useMemo(() => Date.now() - 7 * 24 * 60 * 60 * 1000, []);
 
   const readings = useQuery(
@@ -60,7 +95,9 @@ export default function Dashboard() {
     user ? { userId: user.id, since: sevenDaysAgo } : "skip"
   );
 
-  const sorted = readings ? [...readings].sort((a, b) => b.timestamp - a.timestamp) : [];
+  if (!user || readings === undefined) return <DashboardSkeleton />;
+
+  const sorted = [...readings].sort((a, b) => b.timestamp - a.timestamp);
   const values = sorted.map((r) => r.value);
   const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
   const high = values.length ? Math.max(...values) : null;
@@ -68,40 +105,65 @@ export default function Dashboard() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.greeting}>Hi {user?.firstName ?? "there"} 👋</Text>
-      <Text style={styles.subtitle}>Last 7 days · {values.length} reading{values.length !== 1 ? "s" : ""}</Text>
+      <Text style={styles.greeting}>Hi {user.firstName ?? "there"} 👋</Text>
+      <Text style={styles.subtitle}>
+        Last 7 days · {values.length} reading{values.length !== 1 ? "s" : ""}
+      </Text>
 
+      {/* Stats */}
       <View style={styles.statsRow}>
-        <StatCard
-          label="Average"
-          value={avg !== null ? avg.toFixed(1) : "—"}
-          color={avg !== null ? getGlucoseColor(avg) : Colors.textMuted}
-        />
-        <StatCard
-          label="High"
-          value={high !== null ? high.toFixed(1) : "—"}
-          color={high !== null ? getGlucoseColor(high) : Colors.textMuted}
-        />
-        <StatCard
-          label="Low"
-          value={low !== null ? low.toFixed(1) : "—"}
-          color={low !== null ? getGlucoseColor(low) : Colors.textMuted}
-        />
+        {[
+          { label: "Average", value: avg },
+          { label: "High", value: high },
+          { label: "Low", value: low },
+        ].map(({ label, value }) => (
+          <View key={label} style={styles.statCard}>
+            <Text style={styles.statLabel}>{label}</Text>
+            <Text
+              style={[
+                styles.statValue,
+                { color: value !== null ? getGlucoseColor(value) : Colors.textMuted },
+              ]}
+            >
+              {value !== null ? value.toFixed(1) : "—"}
+            </Text>
+          </View>
+        ))}
       </View>
 
+      {/* Log button */}
       <TouchableOpacity style={styles.logButton} onPress={() => router.push("/(tabs)/log")}>
         <Text style={styles.logButtonText}>+ Log Reading</Text>
       </TouchableOpacity>
 
+      {/* Chart */}
+      {readings.length > 1 && (
+        <View style={styles.chartCard}>
+          <View style={styles.chartHeader}>
+            <Text style={styles.chartTitle}>7-day trend</Text>
+            <View style={styles.chartLegend}>
+              <View style={styles.legendDot} />
+              <Text style={styles.legendText}>Target 4.0–7.8</Text>
+            </View>
+          </View>
+          <GlucoseChart readings={readings} />
+        </View>
+      )}
+
+      {/* Readings list */}
       <Text style={styles.sectionTitle}>Recent Readings</Text>
 
-      {readings === undefined ? (
-        <Text style={styles.emptyText}>Loading...</Text>
-      ) : sorted.length === 0 ? (
+      {sorted.length === 0 ? (
         <Text style={styles.emptyText}>No readings in the last 7 days.</Text>
       ) : (
         sorted.map((r) => (
-          <ReadingRow key={r._id} value={r.value} type={r.type} timestamp={r.timestamp} notes={r.notes} />
+          <ReadingRow
+            key={r._id}
+            value={r.value}
+            type={r.type}
+            timestamp={r.timestamp}
+            notes={r.notes}
+          />
         ))
       )}
     </ScrollView>
@@ -111,8 +173,19 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: 20, paddingBottom: 40 },
+
+  // Skeleton
+  skeletonBox: {
+    backgroundColor: "#e2e8f0",
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+
+  // Header
   greeting: { fontSize: 24, fontWeight: "700", color: Colors.text },
   subtitle: { fontSize: 14, color: Colors.textSecondary, marginBottom: 20 },
+
+  // Stats
   statsRow: { flexDirection: "row", gap: 10, marginBottom: 20 },
   statCard: {
     flex: 1,
@@ -124,7 +197,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   statLabel: { fontSize: 11, color: Colors.textMuted, marginBottom: 4 },
-  statValue: { fontSize: 22, fontWeight: "700", color: Colors.text },
+  statValue: { fontSize: 22, fontWeight: "700" },
+
+  // Log button
   logButton: {
     backgroundColor: Colors.primary,
     borderRadius: 14,
@@ -133,23 +208,55 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   logButtonText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+
+  // Chart
+  chartCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 24,
+    overflow: "hidden",
+  },
+  chartHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  chartTitle: { fontSize: 14, fontWeight: "600", color: Colors.text },
+  chartLegend: { flexDirection: "row", alignItems: "center", gap: 6 },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 3,
+    backgroundColor: "#dcfce7",
+    borderWidth: 1,
+    borderColor: "#86efac",
+  },
+  legendText: { fontSize: 11, color: Colors.textMuted },
+
+  // Readings list
   sectionTitle: { fontSize: 17, fontWeight: "600", color: Colors.text, marginBottom: 12 },
   readingRow: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: Colors.surface,
     borderRadius: 12,
-    padding: 14,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: Colors.border,
+    overflow: "hidden",
   },
-  readingDot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
-  readingInfo: { flex: 1 },
+  readingBar: { width: 5, alignSelf: "stretch" },
+  readingInfo: { flex: 1, paddingHorizontal: 14, paddingVertical: 12 },
   readingType: { fontSize: 14, fontWeight: "500", color: Colors.text },
   readingDate: { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
   readingNotes: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  readingValue: { fontSize: 20, fontWeight: "700", textAlign: "right" },
-  readingStatus: { fontSize: 11, textAlign: "right" },
+  readingRight: { paddingHorizontal: 14, alignItems: "flex-end" },
+  readingValue: { fontSize: 20, fontWeight: "700" },
+  readingStatus: { fontSize: 11 },
+
   emptyText: { color: Colors.textMuted, textAlign: "center", marginTop: 20 },
 });

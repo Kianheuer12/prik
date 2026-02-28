@@ -1,75 +1,157 @@
 import { useUser } from "@clerk/clerk-expo";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
+  Animated,
 } from "react-native";
+import { useEffect, useRef } from "react";
+import Swipeable from "react-native-gesture-handler/Swipeable";
 import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 import { Colors, getGlucoseColor, getGlucoseLabel } from "../../constants/colors";
+
+// ─── Skeleton ───────────────────────────────────────────────────────────────
+
+function SkeletonBox({ style }: { style?: object }) {
+  const opacity = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 600, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  return <Animated.View style={[styles.skeletonBox, style, { opacity }]} />;
+}
+
+function HistorySkeleton() {
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <SkeletonBox style={{ height: 28, width: 100, marginBottom: 20 }} />
+      {[0, 1, 2].map((i) => (
+        <View key={i} style={{ marginBottom: 24 }}>
+          <SkeletonBox style={{ height: 14, width: 160, marginBottom: 10 }} />
+          {[0, 1, 2].map((j) => (
+            <SkeletonBox key={j} style={{ height: 60, width: "100%", marginBottom: 6 }} />
+          ))}
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+// ─── Reading row with swipe-to-delete ────────────────────────────────────────
+
+function ReadingRow({
+  id,
+  value,
+  type,
+  timestamp,
+  notes,
+  onDelete,
+}: {
+  id: string;
+  value: number;
+  type: string;
+  timestamp: number;
+  notes?: string;
+  onDelete: () => void;
+}) {
+  const color = getGlucoseColor(value);
+  const label = getGlucoseLabel(value);
+  const time = new Date(timestamp).toLocaleTimeString("en-ZA", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  function renderRightActions(progress: Animated.AnimatedInterpolation<number>) {
+    const opacity = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    });
+    return (
+      <Animated.View style={[styles.deleteAction, { opacity }]}>
+        <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
+          <Text style={styles.deleteText}>Delete</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }
+
+  return (
+    <Swipeable renderRightActions={renderRightActions} friction={2} rightThreshold={40}>
+      <View style={styles.row}>
+        <View style={[styles.colorBar, { backgroundColor: color }]} />
+        <View style={styles.rowInfo}>
+          <Text style={styles.rowType}>{type === "fasted" ? "Fasted" : "Post-meal"}</Text>
+          <Text style={styles.rowTime}>{time}</Text>
+          {notes ? <Text style={styles.rowNotes}>{notes}</Text> : null}
+        </View>
+        <View style={styles.rowRight}>
+          <Text style={[styles.rowValue, { color }]}>{value.toFixed(1)}</Text>
+          <Text style={[styles.rowStatus, { color }]}>{label}</Text>
+        </View>
+      </View>
+    </Swipeable>
+  );
+}
+
+// ─── History ─────────────────────────────────────────────────────────────────
 
 export default function History() {
   const { user } = useUser();
-
   const readings = useQuery(
     api.readings.getReadingsForUser,
     user ? { userId: user.id } : "skip"
   );
+  const deleteReading = useMutation(api.readings.deleteReading);
 
-  const grouped = readings?.reduce(
-    (acc, r) => {
-      const day = new Date(r.timestamp).toLocaleDateString("en-ZA", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-      });
-      if (!acc[day]) acc[day] = [];
-      acc[day].push(r);
-      return acc;
-    },
-    {} as Record<string, typeof readings>
-  ) ?? {};
+  if (!user || readings === undefined) return <HistorySkeleton />;
+
+  const grouped: Record<string, typeof readings> = {};
+  for (const r of readings) {
+    const day = new Date(r.timestamp).toLocaleDateString("en-ZA", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    if (!grouped[day]) grouped[day] = [];
+    grouped[day].push(r);
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {Object.entries(grouped).map(([day, dayReadings]) => (
-        <View key={day} style={styles.dayGroup}>
-          <Text style={styles.dayLabel}>{day}</Text>
-          {dayReadings!.map((r) => {
-            const color = getGlucoseColor(r.value);
-            const time = new Date(r.timestamp).toLocaleTimeString("en-ZA", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            return (
-              <View key={r._id} style={styles.row}>
-                <View style={[styles.colorBar, { backgroundColor: color }]} />
-                <View style={styles.rowInfo}>
-                  <Text style={styles.rowTime}>{time}</Text>
-                  <Text style={styles.rowType}>
-                    {r.type === "fasted" ? "Fasted" : "Post-meal"}
-                  </Text>
-                  {r.notes ? (
-                    <Text style={styles.rowNotes}>{r.notes}</Text>
-                  ) : null}
-                </View>
-                <View style={styles.rowRight}>
-                  <Text style={[styles.rowValue, { color }]}>
-                    {r.value.toFixed(1)}
-                  </Text>
-                  <Text style={[styles.rowStatus, { color }]}>
-                    {getGlucoseLabel(r.value)}
-                  </Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      ))}
+      <Text style={styles.heading}>History</Text>
 
-      {readings?.length === 0 && (
+      {readings.length === 0 ? (
         <Text style={styles.empty}>No readings logged yet.</Text>
+      ) : (
+        Object.entries(grouped).map(([day, dayReadings]) => (
+          <View key={day} style={styles.dayGroup}>
+            <Text style={styles.dayLabel}>{day}</Text>
+            {dayReadings.map((r) => (
+              <ReadingRow
+                key={r._id}
+                id={r._id}
+                value={r.value}
+                type={r.type}
+                timestamp={r.timestamp}
+                notes={r.notes}
+                onDelete={() => deleteReading({ id: r._id as Id<"readings"> })}
+              />
+            ))}
+          </View>
+        ))
       )}
     </ScrollView>
   );
@@ -78,31 +160,57 @@ export default function History() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { padding: 20, paddingBottom: 40 },
+
+  skeletonBox: {
+    backgroundColor: "#e2e8f0",
+    borderRadius: 12,
+    marginBottom: 6,
+  },
+
+  heading: { fontSize: 24, fontWeight: "700", color: Colors.text, marginBottom: 20 },
+  empty: { color: Colors.textMuted, textAlign: "center", marginTop: 40 },
+
   dayGroup: { marginBottom: 24 },
   dayLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: Colors.textSecondary,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 8,
   },
+
   row: {
     flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.surface,
     borderRadius: 12,
     marginBottom: 6,
-    overflow: "hidden",
     borderWidth: 1,
     borderColor: Colors.border,
+    overflow: "hidden",
   },
-  colorBar: { width: 5 },
-  rowInfo: { flex: 1, padding: 12 },
-  rowTime: { fontSize: 14, fontWeight: "600", color: Colors.text },
-  rowType: { fontSize: 12, color: Colors.textSecondary },
+  colorBar: { width: 5, alignSelf: "stretch" },
+  rowInfo: { flex: 1, paddingHorizontal: 14, paddingVertical: 12 },
+  rowType: { fontSize: 14, fontWeight: "500", color: Colors.text },
+  rowTime: { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
   rowNotes: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  rowRight: { padding: 12, alignItems: "flex-end", justifyContent: "center" },
+  rowRight: { paddingHorizontal: 14, alignItems: "flex-end", justifyContent: "center" },
   rowValue: { fontSize: 20, fontWeight: "700" },
   rowStatus: { fontSize: 11 },
-  empty: { color: Colors.textMuted, textAlign: "center", marginTop: 40 },
+
+  deleteAction: {
+    justifyContent: "center",
+    marginBottom: 6,
+    marginLeft: 8,
+  },
+  deleteButton: {
+    backgroundColor: "#EF4444",
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    height: "100%",
+    justifyContent: "center",
+  },
+  deleteText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 });
