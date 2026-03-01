@@ -59,6 +59,7 @@ export default function LogReading() {
   const [analysing, setAnalysing] = useState(false);
   const [showWeights, setShowWeights] = useState(false);
   const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
+  const [customItems, setCustomItems] = useState<{ name: string; weight: string }[]>([]);
   const [recalculating, setRecalculating] = useState(false);
 
   const numericValue = parseFloat(value);
@@ -88,9 +89,14 @@ export default function LogReading() {
   }
 
   async function handleRecalculate() {
-    const weighted = Object.entries(weightInputs)
-      .filter(([, w]) => w.trim() !== "" && !isNaN(parseFloat(w)))
-      .map(([name, w]) => ({ name, weightG: parseFloat(w) }));
+    const weighted = [
+      ...Object.entries(weightInputs)
+        .filter(([, w]) => w.trim() !== "" && !isNaN(parseFloat(w)))
+        .map(([name, w]) => ({ name, weightG: parseFloat(w) })),
+      ...customItems
+        .filter((i) => i.name.trim() !== "" && i.weight.trim() !== "" && !isNaN(parseFloat(i.weight)))
+        .map((i) => ({ name: i.name.trim(), weightG: parseFloat(i.weight) })),
+    ];
     if (weighted.length === 0) return;
     setRecalculating(true);
     try {
@@ -105,7 +111,7 @@ export default function LogReading() {
 
   function removePhoto() {
     setPhotoDataUrl(null); setAnalysis(null);
-    setShowWeights(false); setWeightInputs({});
+    setShowWeights(false); setWeightInputs({}); setCustomItems([]);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -260,23 +266,55 @@ export default function LogReading() {
                         onClick={() => setShowWeights(!showWeights)}
                         className="text-[#2E86AB] text-sm font-semibold"
                       >
-                        {showWeights ? "▲ Hide weights" : "▼ Add weights for exact count"}
+                        {showWeights ? "▲ Hide weights" : "▼ Enter food weights for exact count"}
                       </button>
 
                       {showWeights && (
                         <div className="space-y-2 pt-1">
+                          <p className="text-xs text-slate-400 dark:text-slate-500">Enter the weight of each food item in grams</p>
                           {analysis.items.map((item: MealItem) => (
                             <div key={item.name} className="flex items-center gap-3">
                               <span className="flex-1 text-sm text-slate-700 dark:text-slate-200">{item.name}</span>
                               <input
-                                type="number" min="0" placeholder="g"
+                                type="number" min="0" placeholder="g food"
                                 value={weightInputs[item.name] ?? ""}
                                 onChange={(e) => setWeightInputs((prev) => ({ ...prev, [item.name]: e.target.value }))}
-                                className="w-20 text-right border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 outline-none focus:border-[#2E86AB]"
+                                className="w-24 text-right border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 outline-none focus:border-[#2E86AB]"
                               />
-                              <span className="text-slate-400 text-sm">g</span>
                             </div>
                           ))}
+
+                          {/* Custom items */}
+                          {customItems.map((item, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <input
+                                type="text" placeholder="Food name"
+                                value={item.name}
+                                onChange={(e) => setCustomItems((prev) => prev.map((ci, i) => i === idx ? { ...ci, name: e.target.value } : ci))}
+                                className="flex-1 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 outline-none focus:border-[#2E86AB]"
+                              />
+                              <input
+                                type="number" min="0" placeholder="g food"
+                                value={item.weight}
+                                onChange={(e) => setCustomItems((prev) => prev.map((ci, i) => i === idx ? { ...ci, weight: e.target.value } : ci))}
+                                className="w-24 text-right border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 outline-none focus:border-[#2E86AB]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setCustomItems((prev) => prev.filter((_, i) => i !== idx))}
+                                className="text-red-400 hover:text-red-600 text-sm font-bold px-1"
+                              >✕</button>
+                            </div>
+                          ))}
+
+                          <button
+                            type="button"
+                            onClick={() => setCustomItems((prev) => [...prev, { name: "", weight: "" }])}
+                            className="w-full py-2 rounded-xl border border-dashed border-[#2E86AB] text-[#2E86AB] text-sm font-semibold hover:bg-[#E6F4FE] dark:hover:bg-[#1e3a5f] transition-colors"
+                          >
+                            + Add item
+                          </button>
+
                           <button
                             type="button"
                             onClick={handleRecalculate}

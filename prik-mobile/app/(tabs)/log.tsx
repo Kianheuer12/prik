@@ -58,6 +58,7 @@ export default function LogReading() {
   const [analysing, setAnalysing] = useState(false);
   const [showWeights, setShowWeights] = useState(false);
   const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
+  const [customItems, setCustomItems] = useState<{ name: string; weight: string }[]>([]);
   const [recalculating, setRecalculating] = useState(false);
 
   const numericValue = parseFloat(value);
@@ -95,9 +96,14 @@ export default function LogReading() {
   }
 
   async function handleRecalculate() {
-    const weighted = Object.entries(weightInputs)
-      .filter(([, w]) => w.trim() !== "" && !isNaN(parseFloat(w)))
-      .map(([name, w]) => ({ name, weightG: parseFloat(w) }));
+    const weighted = [
+      ...Object.entries(weightInputs)
+        .filter(([, w]) => w.trim() !== "" && !isNaN(parseFloat(w)))
+        .map(([name, w]) => ({ name, weightG: parseFloat(w) })),
+      ...customItems
+        .filter((i) => i.name.trim() !== "" && i.weight.trim() !== "" && !isNaN(parseFloat(i.weight)))
+        .map((i) => ({ name: i.name.trim(), weightG: parseFloat(i.weight) })),
+    ];
     if (weighted.length === 0) return;
     setRecalculating(true);
     try {
@@ -112,7 +118,7 @@ export default function LogReading() {
 
   function removePhoto() {
     setPhotoUri(null); setPhotoBase64(null);
-    setAnalysis(null); setShowWeights(false); setWeightInputs({});
+    setAnalysis(null); setShowWeights(false); setWeightInputs({}); setCustomItems([]);
   }
 
   async function handleSubmit() {
@@ -252,18 +258,19 @@ export default function LogReading() {
 
                     <TouchableOpacity style={styles.weightToggle} onPress={() => setShowWeights(!showWeights)}>
                       <Text style={[styles.weightToggleText, { color: colors.primary }]}>
-                        {showWeights ? "▲ Hide weights" : "▼ Add weights for exact count"}
+                        {showWeights ? "▲ Hide weights" : "▼ Enter food weights for exact count"}
                       </Text>
                     </TouchableOpacity>
 
                     {showWeights && (
                       <View style={styles.weightsSection}>
+                        <Text style={[styles.weightHint, { color: colors.textMuted }]}>Enter the weight of each food item in grams</Text>
                         {analysis.items.map((item) => (
                           <View key={item.name} style={styles.weightRow}>
                             <Text style={[styles.weightLabel, { color: colors.text }]}>{item.name}</Text>
                             <TextInput
                               style={[styles.weightInput, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
-                              placeholder="g"
+                              placeholder="g food"
                               placeholderTextColor={colors.textMuted}
                               keyboardType="numeric"
                               value={weightInputs[item.name] ?? ""}
@@ -271,6 +278,38 @@ export default function LogReading() {
                             />
                           </View>
                         ))}
+
+                        {/* Custom items */}
+                        {customItems.map((item, idx) => (
+                          <View key={idx} style={styles.weightRow}>
+                            <TextInput
+                              style={[styles.customNameInput, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                              placeholder="Food name"
+                              placeholderTextColor={colors.textMuted}
+                              value={item.name}
+                              onChangeText={(v) => setCustomItems((prev) => prev.map((ci, i) => i === idx ? { ...ci, name: v } : ci))}
+                            />
+                            <TextInput
+                              style={[styles.weightInput, { borderColor: colors.border, backgroundColor: colors.background, color: colors.text }]}
+                              placeholder="g food"
+                              placeholderTextColor={colors.textMuted}
+                              keyboardType="numeric"
+                              value={item.weight}
+                              onChangeText={(v) => setCustomItems((prev) => prev.map((ci, i) => i === idx ? { ...ci, weight: v } : ci))}
+                            />
+                            <TouchableOpacity onPress={() => setCustomItems((prev) => prev.filter((_, i) => i !== idx))}>
+                              <Text style={{ color: "#ef4444", fontSize: 18, paddingHorizontal: 4 }}>✕</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+
+                        <TouchableOpacity
+                          style={[styles.addItemBtn, { borderColor: colors.primary }]}
+                          onPress={() => setCustomItems((prev) => [...prev, { name: "", weight: "" }])}
+                        >
+                          <Text style={[styles.addItemText, { color: colors.primary }]}>+ Add item</Text>
+                        </TouchableOpacity>
+
                         <TouchableOpacity
                           style={[styles.recalcBtn, { backgroundColor: colors.primary }, recalculating && { opacity: 0.5 }]}
                           onPress={handleRecalculate}
@@ -346,9 +385,13 @@ const styles = StyleSheet.create({
   weightToggle: { paddingVertical: 4 },
   weightToggleText: { fontSize: 13, fontWeight: "600" },
   weightsSection: { gap: 8 },
-  weightRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  weightHint: { fontSize: 11, marginBottom: 4 },
+  weightRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   weightLabel: { fontSize: 14, flex: 1 },
   weightInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, width: 80, textAlign: "right", fontSize: 14 },
+  customNameInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, flex: 1, fontSize: 14 },
+  addItemBtn: { borderWidth: 1, borderRadius: 8, paddingVertical: 8, alignItems: "center", borderStyle: "dashed" },
+  addItemText: { fontSize: 13, fontWeight: "600" },
   recalcBtn: { borderRadius: 10, paddingVertical: 10, alignItems: "center", marginTop: 4 },
   recalcText: { color: "#fff", fontSize: 14, fontWeight: "600" },
   disclaimer: { fontSize: 11, marginTop: 4 },

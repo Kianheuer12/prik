@@ -16,7 +16,11 @@ export type MealAnalysis = {
 
 // ─── Photo analysis ───────────────────────────────────────────────────────────
 
-const PHOTO_PROMPT = `Analyse this meal photo. Identify all food items visible and estimate the carbohydrate content based on the portion sizes you can see.
+const PHOTO_PROMPT = `Analyse this meal or food photo. Follow these steps in order:
+
+1. FIRST: Read any visible text in the image — product labels, brand names, packaging text, nutrition panels. If you can read what the product is, use that information.
+2. THEN: Identify all food items visible (using label text if available, otherwise visual appearance).
+3. FINALLY: Estimate carbohydrate content based on standard nutritional values for each identified item and the portion sizes visible.
 
 Return ONLY a valid JSON object in this exact format — no other text:
 {
@@ -30,11 +34,11 @@ Return ONLY a valid JSON object in this exact format — no other text:
 }
 
 Confidence levels:
-- "high": clear photo, identifiable items, obvious portion sizes
-- "medium": reasonable estimate, some uncertainty
+- "high": label/text clearly identifies the product, or very clear photo with obvious portions
+- "medium": reasonable visual estimate, some uncertainty about portions
 - "low": unclear photo, mixed dishes, or very hard to judge portions
 
-Important: estimatedCarbs and totalCarbs are in grams. Only return the JSON object.`;
+Important: estimatedCarbs and totalCarbs are in grams of carbohydrate. Only return the JSON object.`;
 
 // ─── Weight-based recalculation ───────────────────────────────────────────────
 
@@ -94,7 +98,7 @@ export const analyzeMeal = action({
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "claude-sonnet-4-6",
         max_tokens: 512,
         messages,
       }),
