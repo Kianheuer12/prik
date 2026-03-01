@@ -10,6 +10,9 @@ export const addReading = mutation({
     type: v.union(v.literal("fasted"), v.literal("post-meal")),
     mealOffset: v.optional(v.string()),
     notes: v.optional(v.string()),
+    mealDescription: v.optional(v.string()),
+    estimatedCarbs:  v.optional(v.number()),
+    carbsConfidence: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("readings", args);

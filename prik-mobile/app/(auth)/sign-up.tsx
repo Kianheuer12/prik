@@ -82,7 +82,7 @@ export default function SignUp() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.inner}>
-        <Text style={styles.logo}>Prik</Text>
+        <View style={styles.logoContainer}><PrikLogo height={44} /></View>
         <Text style={styles.tagline}>Create your account.</Text>
 
         <TextInput
