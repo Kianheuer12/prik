@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 195 56" fill="none">
+  <!-- Blood drop icon: top (28,6), bottom circle centre (28,40) r=16 -->
+  <path d="M28 6 C38 16 44 28 44 40 A16 16 0 0 1 12 40 C12 28 18 16 28 6 Z" fill="#2E86AB"/>
+  <!-- Wordmark -->
+  <text
+    x="56" y="46"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+    font-weight="900"
+    font-size="44"
+    letter-spacing="-1"
+    fill="#2E86AB"
+  >Prik</text>
+</svg>

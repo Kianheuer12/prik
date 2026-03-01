@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useState } from "react";
 import { Colors } from "../../constants/colors";
+import { PrikLogo } from "../../components/PrikLogo";
 
 export default function SignIn() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -52,7 +53,7 @@ export default function SignIn() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.inner}>
-        <Text style={styles.logo}>Prik</Text>
+        <View style={styles.logoContainer}><PrikLogo height={44} /></View>
         <Text style={styles.tagline}>Track your glucose, your way.</Text>
 
         <TextInput
@@ -108,11 +109,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 28,
   },
-  logo: {
-    fontSize: 48,
-    fontWeight: "800",
-    color: Colors.primary,
-    textAlign: "center",
+  logoContainer: {
+    alignItems: "center",
     marginBottom: 4,
   },
   tagline: {

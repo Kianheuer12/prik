@@ -2,8 +2,14 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { TouchableOpacity } from "react-native";
 import { useTheme, useColors } from "../../contexts/ThemeContext";
+import { PrikLogo } from "../../components/PrikLogo";
 
 export const FLOATING_TAB_PADDING = 96;
+
+function HeaderLogo() {
+  const colors = useColors();
+  return <PrikLogo height={26} color={colors.primary} />;
+}
 
 function ThemeToggleButton() {
   const { theme, setTheme } = useTheme();
@@ -56,7 +62,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: "Dashboard",
+          headerTitle: () => <HeaderLogo />,
           tabBarLabel: "Home",
           tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
         }}

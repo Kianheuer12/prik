@@ -39,8 +39,8 @@ function SidebarContent({ pathname, onClose }: { pathname: string; onClose?: () 
     <>
       <div className="px-5 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
         <div>
-          <span className="text-2xl font-black text-[#2E86AB]">Prik</span>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Glucose tracker</p>
+          <img src="/logo.svg" alt="Prik" className="h-8 dark:hidden" />
+          <img src="/logo-dark.svg" alt="Prik" className="h-8 hidden dark:block" />
         </div>
         {onClose && (
           <button onClick={onClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
@@ -136,7 +136,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           >
             <Menu size={22} />
           </button>
-          <span className="text-xl font-black text-[#2E86AB]">Prik</span>
+          <img src="/logo.svg" alt="Prik" className="h-7" />
         </div>
       </header>
 

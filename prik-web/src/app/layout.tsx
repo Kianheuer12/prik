@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   title: "Prik",
   description: "Track your glucose, your way.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Blue rounded square background -->
+  <rect width="100" height="100" rx="22" fill="#2E86AB"/>
+  <!-- White blood drop: top point (50,10), bottom circle centre (50,62) r=24 -->
+  <path d="M50 10 C67 26 74 44 74 62 A24 24 0 0 1 26 62 C26 44 33 26 50 10 Z" fill="white"/>
+</svg>

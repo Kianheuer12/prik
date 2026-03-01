@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useState } from "react";
 import { Colors } from "../../constants/colors";
+import { PrikLogo } from "../../components/PrikLogo";
 
 export default function SignUp() {
   const { signUp, setActive, isLoaded } = useSignUp();
@@ -57,7 +58,7 @@ export default function SignUp() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={styles.inner}>
-          <Text style={styles.logo}>Prik</Text>
+          <View style={styles.logoContainer}><PrikLogo height={44} /></View>
           <Text style={styles.tagline}>Check your email for a code.</Text>
           <TextInput
             style={styles.input}
@@ -121,11 +122,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 28,
   },
-  logo: {
-    fontSize: 48,
-    fontWeight: "800",
-    color: Colors.primary,
-    textAlign: "center",
+  logoContainer: {
+    alignItems: "center",
     marginBottom: 4,
   },
   tagline: {
