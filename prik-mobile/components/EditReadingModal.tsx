@@ -12,7 +12,8 @@ import {
 import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { Id } from "../convex/_generated/dataModel";
-import { Colors, getGlucoseColor, getGlucoseLabel } from "../constants/colors";
+import { getGlucoseColor, getGlucoseLabel } from "../constants/colors";
+import { useColors } from "../contexts/ThemeContext";
 
 type ReadingType = "fasted" | "post-meal";
 
@@ -33,6 +34,7 @@ export function EditReadingModal({
   reading: EditableReading;
   onClose: () => void;
 }) {
+  const colors = useColors();
   const updateReading = useMutation(api.readings.updateReading);
   const [value, setValue] = useState(reading.value.toFixed(1));
   const [type, setType] = useState<ReadingType>(reading.type as ReadingType);
@@ -42,7 +44,7 @@ export function EditReadingModal({
 
   const numericValue = parseFloat(value);
   const isValid = !isNaN(numericValue) && numericValue > 0 && numericValue < 50;
-  const borderColor = isValid ? getGlucoseColor(numericValue) : Colors.border;
+  const borderColor = isValid ? getGlucoseColor(numericValue) : colors.border;
 
   async function handleSave() {
     if (!isValid) return;
@@ -68,18 +70,23 @@ export function EditReadingModal({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
-            <View style={styles.sheet}>
-              <View style={styles.handle} />
-              <Text style={styles.title}>Edit Reading</Text>
+            <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+              <View style={[styles.handle, { backgroundColor: colors.border }]} />
+              <Text style={[styles.title, { color: colors.text }]}>Edit Reading</Text>
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 {/* Value */}
-                <Text style={styles.label}>Glucose (mmol/L)</Text>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>Glucose (mmol/L)</Text>
                 <TextInput
-                  style={[styles.valueInput, { borderColor }]}
+                  style={[
+                    styles.valueInput,
+                    { borderColor, backgroundColor: colors.background, color: colors.text },
+                    isValid && { color: getGlucoseColor(numericValue) },
+                  ]}
                   value={value}
                   onChangeText={setValue}
                   keyboardType="decimal-pad"
                   selectTextOnFocus
+                  placeholderTextColor={colors.textMuted}
                 />
                 {isValid && (
                   <Text style={[styles.statusBadge, { color: getGlucoseColor(numericValue) }]}>
@@ -88,18 +95,23 @@ export function EditReadingModal({
                 )}
 
                 {/* Type */}
-                <Text style={[styles.label, { marginTop: 20 }]}>Type</Text>
+                <Text style={[styles.label, { marginTop: 20, color: colors.textSecondary }]}>Type</Text>
                 <View style={styles.typeRow}>
                   {(["fasted", "post-meal"] as ReadingType[]).map((t) => (
                     <TouchableOpacity
                       key={t}
-                      style={[styles.typeButton, type === t && styles.typeButtonActive]}
+                      style={[
+                        styles.typeButton,
+                        { backgroundColor: colors.background, borderColor: colors.border },
+                        type === t && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+                      ]}
                       onPress={() => setType(t)}
                     >
                       <Text
                         style={[
                           styles.typeButtonText,
-                          type === t && styles.typeButtonTextActive,
+                          { color: colors.textSecondary },
+                          type === t && { color: colors.primary, fontWeight: "700" },
                         ]}
                       >
                         {t === "fasted" ? "Fasted" : "Post-meal"}
@@ -111,21 +123,25 @@ export function EditReadingModal({
                 {/* Meal offset */}
                 {type === "post-meal" && (
                   <>
-                    <Text style={[styles.label, { marginTop: 20 }]}>Time after meal</Text>
+                    <Text style={[styles.label, { marginTop: 20, color: colors.textSecondary }]}>
+                      Time after meal
+                    </Text>
                     <View style={styles.offsetRow}>
                       {MEAL_OFFSETS.map((o) => (
                         <TouchableOpacity
                           key={o}
                           style={[
                             styles.offsetChip,
-                            mealOffset === o && styles.offsetChipActive,
+                            { borderColor: colors.border, backgroundColor: colors.background },
+                            mealOffset === o && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
                           ]}
                           onPress={() => setMealOffset(mealOffset === o ? undefined : o)}
                         >
                           <Text
                             style={[
                               styles.offsetChipText,
-                              mealOffset === o && styles.offsetChipTextActive,
+                              { color: colors.textSecondary },
+                              mealOffset === o && { color: colors.primary, fontWeight: "600" },
                             ]}
                           >
                             {o}
@@ -137,24 +153,36 @@ export function EditReadingModal({
                 )}
 
                 {/* Notes */}
-                <Text style={[styles.label, { marginTop: 20 }]}>Notes (optional)</Text>
+                <Text style={[styles.label, { marginTop: 20, color: colors.textSecondary }]}>
+                  Notes (optional)
+                </Text>
                 <TextInput
-                  style={styles.notesInput}
+                  style={[
+                    styles.notesInput,
+                    { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
+                  ]}
                   value={notes}
                   onChangeText={setNotes}
                   multiline
                   numberOfLines={3}
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   placeholder="e.g. after lunch..."
                 />
 
                 {/* Buttons */}
                 <View style={styles.buttonRow}>
-                  <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-                    <Text style={styles.cancelText}>Cancel</Text>
+                  <TouchableOpacity
+                    style={[styles.cancelButton, { borderColor: colors.border }]}
+                    onPress={onClose}
+                  >
+                    <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.saveButton, (!isValid || loading) && styles.saveButtonDisabled]}
+                    style={[
+                      styles.saveButton,
+                      { backgroundColor: colors.primary },
+                      (!isValid || loading) && { backgroundColor: colors.border },
+                    ]}
                     onPress={handleSave}
                     disabled={!isValid || loading}
                   >
@@ -177,7 +205,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: Colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -188,65 +215,50 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
     alignSelf: "center",
     marginBottom: 20,
   },
-  title: { fontSize: 20, fontWeight: "700", color: Colors.text, marginBottom: 16 },
+  title: { fontSize: 20, fontWeight: "700", marginBottom: 16 },
   label: {
     fontSize: 12,
     fontWeight: "600",
-    color: Colors.textSecondary,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 8,
   },
   valueInput: {
-    backgroundColor: Colors.background,
     borderWidth: 2,
     borderRadius: 14,
     paddingHorizontal: 20,
     paddingVertical: 14,
     fontSize: 28,
     fontWeight: "700",
-    color: Colors.text,
     textAlign: "center",
   },
   statusBadge: { textAlign: "center", marginTop: 6, fontSize: 14, fontWeight: "600" },
   typeRow: { flexDirection: "row", gap: 10 },
   typeButton: {
     flex: 1,
-    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
   },
-  typeButtonActive: { backgroundColor: Colors.primaryLight, borderColor: Colors.primary },
-  typeButtonText: { fontSize: 14, color: Colors.textSecondary, fontWeight: "500" },
-  typeButtonTextActive: { color: Colors.primary, fontWeight: "700" },
+  typeButtonText: { fontSize: 14, fontWeight: "500" },
   offsetRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   offsetChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.background,
   },
-  offsetChipActive: { backgroundColor: Colors.primaryLight, borderColor: Colors.primary },
-  offsetChipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: "500" },
-  offsetChipTextActive: { color: Colors.primary, fontWeight: "600" },
+  offsetChipText: { fontSize: 13, fontWeight: "500" },
   notesInput: {
-    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: Colors.text,
     textAlignVertical: "top",
     minHeight: 80,
   },
@@ -256,17 +268,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
     alignItems: "center",
   },
-  cancelText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary },
+  cancelText: { fontSize: 15, fontWeight: "600" },
   saveButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: Colors.primary,
     alignItems: "center",
   },
-  saveButtonDisabled: { backgroundColor: Colors.border },
   saveText: { fontSize: 15, fontWeight: "700", color: "#fff" },
 });

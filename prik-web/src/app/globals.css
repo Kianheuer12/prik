@@ -1,1 +1,4 @@
 @import "tailwindcss";
+
+/* Enable class-based dark mode (used by next-themes) */
+@custom-variant dark (&:where(.dark, .dark *));

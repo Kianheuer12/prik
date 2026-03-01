@@ -49,53 +49,43 @@ export default function LogReading() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold text-slate-900 mb-6">Log Reading</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6">Log Reading</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Value input */}
         <div>
-          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
             Glucose (mmol/L)
           </label>
           <input
-            type="number"
-            step="0.1"
-            min="0"
-            max="50"
+            type="number" step="0.1" min="0" max="50"
             placeholder="e.g. 5.4"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            className="w-full text-4xl font-bold text-center py-5 rounded-2xl border-2 bg-white outline-none transition-colors"
+            className="w-full text-4xl font-bold text-center py-5 rounded-2xl border-2 bg-white dark:bg-slate-800 dark:text-slate-100 outline-none transition-colors"
             style={{
               borderColor: isValid ? getGlucoseColor(numericValue) : "#e2e8f0",
-              color: isValid ? getGlucoseColor(numericValue) : "#1a202c",
+              color: isValid ? getGlucoseColor(numericValue) : undefined,
             }}
           />
           {isValid && (
-            <p
-              className="text-center mt-2 font-semibold text-sm"
-              style={{ color: getGlucoseColor(numericValue) }}
-            >
+            <p className="text-center mt-2 font-semibold text-sm" style={{ color: getGlucoseColor(numericValue) }}>
               {getGlucoseLabel(numericValue)} · {numericValue.toFixed(1)} mmol/L
             </p>
           )}
         </div>
 
-        {/* Type */}
         <div>
-          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
             Reading type
           </label>
           <div className="grid grid-cols-2 gap-3">
             {(["fasted", "post-meal"] as ReadingType[]).map((t) => (
               <button
-                key={t}
-                type="button"
-                onClick={() => setType(t)}
+                key={t} type="button" onClick={() => setType(t)}
                 className={`py-3 rounded-xl border font-medium transition-colors ${
                   type === t
-                    ? "bg-[#E6F4FE] border-[#2E86AB] text-[#2E86AB]"
-                    : "bg-white border-slate-200 text-slate-600"
+                    ? "bg-[#E6F4FE] dark:bg-[#1e3a5f] border-[#2E86AB] text-[#2E86AB]"
+                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
                 }`}
               >
                 {t === "fasted" ? "Fasted" : "Post-meal"}
@@ -104,22 +94,20 @@ export default function LogReading() {
           </div>
         </div>
 
-        {/* Meal offset — only for post-meal */}
         {type === "post-meal" && (
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
               Time after meal
             </label>
             <div className="flex flex-wrap gap-2">
               {MEAL_OFFSETS.map((o) => (
                 <button
-                  key={o}
-                  type="button"
+                  key={o} type="button"
                   onClick={() => setMealOffset(mealOffset === o ? undefined : o)}
                   className={`px-4 py-2 rounded-xl border text-sm font-medium transition-colors ${
                     mealOffset === o
-                      ? "bg-[#E6F4FE] border-[#2E86AB] text-[#2E86AB]"
-                      : "bg-white border-slate-200 text-slate-600"
+                      ? "bg-[#E6F4FE] dark:bg-[#1e3a5f] border-[#2E86AB] text-[#2E86AB]"
+                      : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
                   }`}
                 >
                   {o}
@@ -129,9 +117,8 @@ export default function LogReading() {
           </div>
         )}
 
-        {/* Notes */}
         <div>
-          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
             Notes (optional)
           </label>
           <textarea
@@ -139,7 +126,7 @@ export default function LogReading() {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
-            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 outline-none resize-none focus:border-[#2E86AB] transition-colors"
+            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm text-slate-800 dark:text-slate-100 dark:placeholder-slate-500 outline-none resize-none focus:border-[#2E86AB] transition-colors"
           />
         </div>
 
@@ -148,8 +135,7 @@ export default function LogReading() {
         <button
           type="submit"
           disabled={!isValid || loading}
-          className="w-full py-4 rounded-2xl text-white font-bold text-lg transition-colors disabled:opacity-40"
-          style={{ backgroundColor: isValid ? "#2E86AB" : "#94a3b8" }}
+          className="w-full py-4 rounded-2xl text-white font-bold text-lg transition-colors disabled:opacity-40 bg-[#2E86AB] hover:bg-[#2577a0]"
         >
           {loading ? "Saving..." : "Save Reading"}
         </button>

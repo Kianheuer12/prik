@@ -6,6 +6,7 @@ import * as SecureStore from "expo-secure-store";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { api } from "../convex/_generated/api";
+import { ThemeProvider } from "../contexts/ThemeContext";
 
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
 
@@ -52,14 +53,16 @@ function AuthGate() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ClerkProvider
-        publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
-        tokenCache={tokenCache}
-      >
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-          <AuthGate />
-        </ConvexProviderWithClerk>
-      </ClerkProvider>
+      <ThemeProvider>
+        <ClerkProvider
+          publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+          tokenCache={tokenCache}
+        >
+          <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+            <AuthGate />
+          </ConvexProviderWithClerk>
+        </ClerkProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }

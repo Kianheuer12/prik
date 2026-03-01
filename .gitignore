@@ -21,3 +21,6 @@ Thumbs.db
 
 # Claude (local AI session files)
 .claude/
+
+# One-off seed scripts (contain hardcoded user IDs)
+prik-mobile/seed-readings.mjs

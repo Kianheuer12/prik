@@ -13,7 +13,7 @@ import { downloadXLSX } from "@/lib/export";
 import { Pencil, Trash2 } from "lucide-react";
 
 function Skeleton({ className }: { className: string }) {
-  return <div className={`animate-pulse bg-slate-200 rounded-xl ${className}`} />;
+  return <div className={`animate-pulse bg-slate-200 dark:bg-slate-700 rounded-xl ${className}`} />;
 }
 
 function DashboardSkeleton() {
@@ -66,12 +66,10 @@ export default function Dashboard() {
         />
       )}
 
-      <div className="flex items-center justify-between mb-1">
-        <h1 className="text-2xl font-bold text-slate-900">
-          Hi {user.firstName ?? "there"} 👋
-        </h1>
-      </div>
-      <p className="text-sm text-slate-500 mb-5">
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-1">
+        Hi {user.firstName ?? "there"} 👋
+      </h1>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
         Last 7 days · {values.length} reading{values.length !== 1 ? "s" : ""}
       </p>
 
@@ -82,8 +80,8 @@ export default function Dashboard() {
           { label: "High", value: high },
           { label: "Low", value: low },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-white rounded-2xl p-4 border border-slate-200 text-center">
-            <p className="text-xs text-slate-400 mb-1">{label}</p>
+          <div key={label} className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 text-center">
+            <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">{label}</p>
             <p className="text-2xl font-bold" style={{ color: value !== null ? getGlucoseColor(value) : "#94a3b8" }}>
               {value !== null ? value.toFixed(1) : "—"}
             </p>
@@ -91,7 +89,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Log button */}
       <Link
         href="/log"
         className="block w-full bg-[#2E86AB] text-white text-center font-bold text-lg py-4 rounded-2xl mb-6 hover:bg-[#2577a0] transition-colors"
@@ -99,12 +96,11 @@ export default function Dashboard() {
         + Log Reading
       </Link>
 
-      {/* Chart */}
       {readings.length > 1 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-slate-700">7-day trend</h2>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">7-day trend</h2>
+            <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
               <span className="inline-block w-3 h-3 rounded-sm bg-green-100 border border-green-300" />
               Target 4.0–7.8
             </div>
@@ -113,9 +109,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Readings list */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold text-slate-900">Recent Readings</h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Recent Readings</h2>
         {readings.length > 0 && (
           <button
             onClick={() => downloadXLSX(readings, `prik-7days-${new Date().toISOString().slice(0, 10)}`)}
@@ -127,7 +122,7 @@ export default function Dashboard() {
       </div>
 
       {sorted.length === 0 ? (
-        <p className="text-slate-400 text-center py-8">No readings in the last 7 days.</p>
+        <p className="text-slate-400 dark:text-slate-500 text-center py-8">No readings in the last 7 days.</p>
       ) : (
         <div className="space-y-2">
           {sorted.map((r) => {
@@ -136,40 +131,28 @@ export default function Dashboard() {
             const dateStr = date.toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
             const mealOffset = (r as { mealOffset?: string }).mealOffset;
             return (
-              <div key={r._id} className="bg-white rounded-xl border border-slate-200 flex items-center overflow-hidden group">
+              <div key={r._id} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center overflow-hidden group">
                 <div className={`w-1.5 self-stretch ${getGlucoseBgTailwind(r.value)}`} />
                 <div className="flex-1 px-4 py-3">
-                  <p className="text-sm font-medium text-slate-800">
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
                     {r.type === "fasted" ? "Fasted" : "Post-meal"}
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
                     {dateStr} · {timeStr}
                     {r.type === "post-meal" && mealOffset && <> · {mealOffset} after meal</>}
                   </p>
-                  {r.notes && <p className="text-xs text-slate-400 mt-0.5">{r.notes}</p>}
+                  {r.notes && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{r.notes}</p>}
                 </div>
                 <div className="px-4 text-right flex items-center gap-3">
                   <div>
-                    <p className={`text-xl font-bold ${getGlucoseTailwind(r.value)}`}>
-                      {r.value.toFixed(1)}
-                    </p>
-                    <p className={`text-xs ${getGlucoseTailwind(r.value)}`}>
-                      {getGlucoseLabel(r.value)}
-                    </p>
+                    <p className={`text-xl font-bold ${getGlucoseTailwind(r.value)}`}>{r.value.toFixed(1)}</p>
+                    <p className={`text-xs ${getGlucoseTailwind(r.value)}`}>{getGlucoseLabel(r.value)}</p>
                   </div>
-                  <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-all">
-                    <button
-                      onClick={() => setEditingReading(r as EditableReading)}
-                      className="text-slate-300 hover:text-[#2E86AB] transition-colors"
-                      title="Edit"
-                    >
+                  <div className="flex gap-1 transition-all sm:opacity-0 sm:group-hover:opacity-100">
+                    <button onClick={() => setEditingReading(r as EditableReading)} className="text-slate-300 dark:text-slate-600 hover:text-[#2E86AB] transition-colors" title="Edit">
                       <Pencil size={13} />
                     </button>
-                    <button
-                      onClick={() => setDeletingId(r._id)}
-                      className="text-slate-300 hover:text-red-400 transition-colors"
-                      title="Delete"
-                    >
+                    <button onClick={() => setDeletingId(r._id)} className="text-slate-300 dark:text-slate-600 hover:text-red-400 transition-colors" title="Delete">
                       <Trash2 size={13} />
                     </button>
                   </div>

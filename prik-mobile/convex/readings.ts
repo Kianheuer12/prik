@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 
 export const addReading = mutation({
   args: {
@@ -49,6 +50,17 @@ export const getLast7DaysReadings = query({
       )
       .order("asc")
       .collect();
+  },
+});
+
+export const getReadingsPage = query({
+  args: { userId: v.string(), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("readings")
+      .withIndex("by_user_and_time", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .paginate(args.paginationOpts);
   },
 });
 
