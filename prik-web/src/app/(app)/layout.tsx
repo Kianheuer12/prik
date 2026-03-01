@@ -4,6 +4,8 @@ import { usePathname } from "next/navigation";
 import { SignOutButton, useUser } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { Menu, X, Home, PlusCircle, Clock, Sun, Moon, Monitor } from "lucide-react";
 
 const navItems = [
@@ -93,6 +95,17 @@ function SidebarContent({ pathname, onClose }: { pathname: string; onClose?: () 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useUser();
+  const upsertUser = useMutation(api.users.upsertUser);
+
+  useEffect(() => {
+    if (!user) return;
+    upsertUser({
+      clerkId: user.id,
+      email: user.primaryEmailAddress?.emailAddress ?? "",
+      name: user.fullName ?? undefined,
+    });
+  }, [user?.id]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
